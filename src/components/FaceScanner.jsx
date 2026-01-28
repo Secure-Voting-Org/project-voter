@@ -1,68 +1,129 @@
-import useFaceID from '../hooks/useFaceID';
 
-const FaceScanner = ({ onScanSuccess, onScanFailure }) => {
-    const { status, startScan, simulateSuccess, simulateFailure } = useFaceID(onScanSuccess, onScanFailure);
+import React, { useEffect, useRef, useState } from 'react';
+import * as faceapi from 'face-api.js';
+import { loadModels, getFaceDescriptor, matchFaces } from '../services/faceAuth';
 
-    // useEffect for camera logic can be moved to the hook or kept here if it interacts with DOM elements directly, 
-    // but for now the hook handles the simulation logic.
-    // If there was real camera logic it might be better inside the component or a dedicated hook effect.
-    // For this refactor, we are using the hook's returned state and functions.
+const FaceScanner = ({ onScanSuccess, onScanFailure, currentUser, onEnroll, mode = 'verify' }) => {
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const [isModelLoaded, setIsModelLoaded] = useState(false);
+    const [status, setStatus] = useState('Initializing Face ID...');
+
+    useEffect(() => {
+        const startFaceAuth = async () => {
+            try {
+                await loadModels();
+                setIsModelLoaded(true);
+                setStatus('Models loaded. Starting camera...');
+                startVideo();
+            } catch (err) {
+                console.error(err);
+                if (onScanFailure) onScanFailure(new Error('Failed to load AI models'));
+            }
+        };
+        startFaceAuth();
+    }, []);
+
+    const startVideo = () => {
+        navigator.mediaDevices.getUserMedia({ video: {} })
+            .then(stream => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                setStatus('Error accessing camera');
+                if (onScanFailure) onScanFailure(err);
+            });
+    };
+
+    const handleVideoPlay = async () => {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+
+        if (!video || !canvas) return;
+
+        const displaySize = { width: video.width, height: video.height };
+        faceapi.matchDimensions(canvas, displaySize);
+
+        setStatus(mode === 'enroll' ? 'Scanning face for registration...' : 'Verifying identity...');
+
+        const interval = setInterval(async () => {
+            if (!videoRef.current) {
+                clearInterval(interval);
+                return;
+            }
+
+            try {
+                // Detect face
+                const detections = await faceapi.detectSingleFace(video)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (detections) {
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+
+                    // Clear previous drawings
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw box
+                    faceapi.draw.drawDetections(canvas, resizedDetections);
+
+                    // LOGIC BASED ON MODE
+                    if (mode === 'enroll') {
+                        // ENROLL MODE: Capture first good face
+                        setStatus('Face Captured! Registering...');
+                        clearInterval(interval);
+                        video.srcObject.getTracks().forEach(track => track.stop());
+
+                        if (onEnroll) onEnroll(detections.descriptor);
+
+                    } else {
+                        // VERIFY MODE
+                        if (currentUser && currentUser.faceDescriptor) {
+                            const match = matchFaces(detections.descriptor, currentUser.faceDescriptor);
+                            if (match) {
+                                setStatus('Face Verified!');
+                                clearInterval(interval);
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                                if (onScanSuccess) onScanSuccess();
+                            } else {
+                                setStatus('Face Does Not Match Records');
+                            }
+                        } else {
+                            setStatus('Error: No reference data for verification.');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Detection error:", error);
+            }
+        }, 500);
+    };
 
     return (
-        <div id="face-container">
-            {status === 'idle' && (
-                <div style={{ textAlign: 'center', color: '#6c757d', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '3rem' }}>👤</div>
-                    <p>Camera Off</p>
-                    <button className="btn btn-primary" onClick={startScan}>Start Camera</button>
-                </div>
-            )}
-
-            {status === 'scanning' && (
-                <div className="face-scanner">
-                    <div className="face-overlay" style={{
-                        width: '200px', height: '200px', border: '2px solid #fff', margin: '0 auto',
-                        position: 'relative', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#000'
-                    }}>
-                        <div className="scan-line" style={{
-                            width: '100%', height: '2px', backgroundColor: '#0f0',
-                            position: 'absolute', top: '0', animation: 'scan 2s linear infinite'
-                        }}></div>
-                        <style>{`
-                            @keyframes scan {
-                                0% { top: 0; }
-                                100% { top: 100%; }
-                            }
-                        `}</style>
-                    </div>
-                    <p style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--primary-color)', fontFamily: 'monospace' }}>ANALYZING BIOMETRICS...</p>
-                </div>
-            )}
-
-            {status === 'success' && (
-                <div style={{ textAlign: 'center', color: 'var(--success-color)' }}>
-                    <div style={{ fontSize: '4rem' }}>😊</div>
-                    <h3>Match Found</h3>
-                    <p>Confidence: 98.4%</p>
-                </div>
-            )}
-
-            {status === 'failure' && (
-                <div style={{ textAlign: 'center', color: '#dc3545' }}>
-                    <div style={{ fontSize: '4rem' }}>⚠️</div>
-                    <h3>No Match</h3>
-                    <p>Try Again</p>
-                </div>
-            )}
-
-            {status === 'scanning' && (
-                <div className="mock-actions" style={{ marginTop: '1rem', textAlign: 'center' }}>
-                    <button className="btn btn-secondary" onClick={simulateSuccess} style={{ marginRight: '0.5rem' }}>Debug: Simulate Face Match</button>
-                    <button className="btn btn-secondary" onClick={simulateFailure} style={{ backgroundColor: '#dc3545' }}>Debug: Simulate Fail</button>
-                </div>
-            )}
+        <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+            <p style={{ textAlign: 'center', fontWeight: 'bold' }}>{status}</p>
+            <div style={{ position: 'relative' }}>
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    onPlay={handleVideoPlay}
+                    width="480"
+                    height="360"
+                    style={{ borderRadius: '8px', width: '100%' }}
+                />
+                <canvas
+                    ref={canvasRef}
+                    style={{ position: 'absolute', top: 0, left: 0 }}
+                />
+            </div>
         </div>
     );
 };
 
 export default FaceScanner;
+

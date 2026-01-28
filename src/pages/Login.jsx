@@ -2,45 +2,85 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FaceScanner from '../components/FaceScanner';
 import { Auth } from '../utils/auth';
+import { enrollFace } from '../services/faceAuth';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1); // 1: Voter ID, 2: Face Auth
+    const [step, setStep] = useState(1); // 1: ID, 2: Enroll (if needed), 3: Verify
     const [voterId, setVoterId] = useState('');
     const [error, setError] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [statusMsg, setStatusMsg] = useState('');
 
-    const handleIdSubmit = (e) => {
+    const hasValidFaceData = (user) => {
+        return user.faceDescriptor &&
+            Array.isArray(user.faceDescriptor) &&
+            user.faceDescriptor.length === 128 &&
+            user.faceDescriptor[0] !== 0.1; // Check against dummy data
+    };
+
+    const handleIdSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setIsVerifying(true);
 
-        // Simulate network delay
-        setTimeout(() => {
-            const user = Auth.verifyVoterId(voterId.toUpperCase());
+        try {
+            const user = await Auth.verifyVoterId(voterId.toUpperCase());
             if (user) {
                 setCurrentUser({ id: voterId.toUpperCase(), ...user });
-                setStep(2);
-                setStatusMsg(`Welcome, ${user.name}. Please scan your face.`);
+
+                // DECISION: Enroll or Verify?
+                if (hasValidFaceData(user)) {
+                    setStep(3); // Go straight to Verify
+                    setStatusMsg(`Welcome back, ${user.name}. Please verify your identity.`);
+                } else {
+                    setStep(2); // Go to Enroll
+                    setStatusMsg(`Welcome, ${user.name}. First time setup: Please scan your face to register.`);
+                }
             } else {
                 setError("Invalid Voter ID. Please try again.");
             }
+        } catch (err) {
+            setError("Server connection failed.");
+        } finally {
             setIsVerifying(false);
-        }, 800);
+        }
     };
 
-    const handleScanSuccess = () => {
-        setStatusMsg("Authentication Successful! Redirecting...");
-        Auth.login(currentUser);
+    // Step 2: Handle Enrollment
+    const handleEnrollment = async (descriptor) => {
+        try {
+            setStatusMsg("Registering face data...");
+            await enrollFace(currentUser.id, descriptor);
+
+            // Update local user data
+            const updatedUser = { ...currentUser, faceDescriptor: descriptor };
+            setCurrentUser(updatedUser);
+
+            setStatusMsg("Registration Successful! Now verifying identity...");
+
+            // Artificial delay to let user read message before switching context
+            setTimeout(() => {
+                setStep(3); // Move to Verify
+            }, 2000);
+
+        } catch (err) {
+            setStatusMsg("Registration Failed: " + err.message);
+        }
+    };
+
+    // Step 3: Handle Verification
+    const handleVerificationSuccess = async () => {
+        setStatusMsg("Identity Verified! Logging in...");
+        await Auth.login(currentUser);
         setTimeout(() => {
-            navigate('/'); // Redirect to home or Vote page. Logic in original was index.html which might resolve to /
+            navigate('/vote');
         }, 1500);
     };
 
     const handleScanFailure = (err) => {
-        setStatusMsg("Authentication Failed: " + err.message);
+        setStatusMsg("Scan Error: " + err.message);
     };
 
     return (
@@ -50,7 +90,7 @@ const Login = () => {
                 <div id="login-steps">
                     {step === 1 && (
                         <div id="step-id">
-                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Step 1/2: Enter Voter ID</p>
+                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Step 1: Enter Voter ID</p>
                             <form onSubmit={handleIdSubmit}>
                                 <div className="form-group">
                                     <label htmlFor="voterIdInput">Voter ID Number</label>
@@ -67,7 +107,7 @@ const Login = () => {
                                     />
                                 </div>
                                 <button type="submit" className="btn btn-primary" disabled={isVerifying}>
-                                    {isVerifying ? 'Verifying...' : 'Verify Identity'}
+                                    {isVerifying ? 'Checking...' : 'Next'}
                                 </button>
                             </form>
                             {error && (
@@ -79,14 +119,45 @@ const Login = () => {
                     )}
 
                     {step === 2 && (
-                        <div id="step-face">
-                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Step 2/2: Biometric Verification</p>
+                        <div id="step-enroll">
+                            <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--primary-color)' }}>
+                                <strong>Registration Required</strong>
+                            </p>
+                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                                We need to capture your face data for future verification.
+                                <br />Please look at the camera.
+                            </p>
 
                             <FaceScanner
-                                onScanSuccess={handleScanSuccess}
+                                mode="enroll"
+                                onEnroll={handleEnrollment}
+                                onScanFailure={handleScanFailure}
+                            />
+                        </div>
+                    )}
+
+                    {step === 3 && (
+                        <div id="step-verify">
+                            <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--success-color)' }}>
+                                <strong>Identity Check</strong>
+                            </p>
+                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Please verify your identity.</p>
+
+                            <FaceScanner
+                                mode="verify"
+                                currentUser={currentUser}
+                                onScanSuccess={handleVerificationSuccess}
                                 onScanFailure={handleScanFailure}
                             />
 
+                            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                                <button
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={() => setStep(2)}
+                                >
+                                    Issues? Re-Register Face
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -95,7 +166,10 @@ const Login = () => {
                             textAlign: 'center',
                             marginTop: '1rem',
                             fontWeight: 'bold',
-                            color: statusMsg.includes('Success') ? 'var(--success-color)' : (statusMsg.includes('Failed') ? '#dc3545' : 'inherit')
+                            padding: '10px',
+                            borderRadius: '5px',
+                            backgroundColor: '#f8f9fa',
+                            color: statusMsg.includes('Success') || statusMsg.includes('Verified') ? 'var(--success-color)' : (statusMsg.includes('Failed') ? '#dc3545' : 'inherit')
                         }}>
                             {statusMsg}
                         </div>

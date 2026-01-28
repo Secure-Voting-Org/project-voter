@@ -1,31 +1,54 @@
 // Basic Authentication Utilities
 export const Auth = {
-    // Mock Database of Valid Voters
-    MOCK_VOTERS: {
-        'ABC1234567': { name: 'Jane Doe', constituency: 'Downtown-1', faceRegistered: true },
-        'XYZ9876543': { name: 'John Smith', constituency: 'Uptown-4', faceRegistered: true },
-        'TESTUSER': { name: 'Test Voter', constituency: 'Debug-0', faceRegistered: true }
-    },
+    // API Base URL
+    API_URL: 'http://localhost:5000/api',
 
     // Verify Voter ID
-    verifyVoterId: (id) => {
-        return Auth.MOCK_VOTERS[id] || null;
+    verifyVoterId: async (id) => {
+        try {
+            const response = await fetch(`${Auth.API_URL}/verify-voter`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voterId: id })
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error("Verification Error:", error);
+            return null;
+        }
     },
 
-    // Save mock session data
-    login: (userData) => {
-        localStorage.setItem('user_token', 'mock-jwt-token-' + Date.now());
+    // Save session and log login
+    login: async (userData) => {
+        localStorage.setItem('user_token', 'jwt-token-' + Date.now()); // In real app, get token from backend
         localStorage.setItem('user_info', JSON.stringify(userData));
-        console.log("User logged in:", userData);
+
+        // Log to backend
+        try {
+            await fetch(`${Auth.API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userData.id,
+                    status: 'SUCCESS',
+                    details: { method: 'FACE_AUTH' }
+                })
+            });
+        } catch (e) {
+            console.error("Logging failed", e);
+        }
     },
 
     // Clear session data
     logout: () => {
         localStorage.removeItem('user_token');
         localStorage.removeItem('user_info');
-        console.log("User logged out");
-        // In React we might want to use navigation, but this helper just clears data
-        // The component calling this should handle redirect if needed
     },
 
     // Check if user is logged in
