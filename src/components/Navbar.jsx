@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const Navbar = () => {
     const { user, isLoggedIn, logout } = useAuth();
+    const { t } = useTranslation();
 
     return (
         <header className="navbar">
@@ -13,26 +16,27 @@ const Navbar = () => {
                     alt="TrustBallot Logo"
                     style={{ height: '70px', marginRight: '15px' }}
                 />
-                TrustBallot
+                {t('navbar.title')}
             </Link>
-            <nav>
-                <Link to="/">Home</Link>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Link to="/">{t('navbar.home')}</Link>
                 {!isLoggedIn ? (
                     <>
-                        <Link to="/login">Login</Link>
+                        <Link to="/login">{t('navbar.login')}</Link>
                     </>
                 ) : (
                     <>
-                        {user?.role === 'admin' && <Link to="/admin">Admin Panel</Link>}
-                        {user?.role === 'voter' && <Link to="/vote">Voting Booth</Link>}
+                        {user?.role === 'admin' && <Link to="/admin">{t('navbar.admin')}</Link>}
+                        {user?.role === 'voter' && <Link to="/vote">{t('navbar.booth')}</Link>}
                         <button
                             onClick={logout}
                             style={{ marginLeft: '10px', cursor: 'pointer' }}
                         >
-                            Logout ({user?.name})
+                            {t('navbar.logout')} ({user?.name})
                         </button>
                     </>
                 )}
+                <LanguageSwitcher />
             </nav>
         </header>
     );

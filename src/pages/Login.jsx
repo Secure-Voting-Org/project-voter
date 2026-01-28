@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import FaceScanner from '../components/FaceScanner';
 import { Auth } from '../utils/auth';
 import { enrollFace } from '../services/faceAuth';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [step, setStep] = useState(1); // 1: ID, 2: Enroll (if needed), 3: Verify
     const [voterId, setVoterId] = useState('');
     const [error, setError] = useState('');
@@ -72,7 +74,7 @@ const Login = () => {
 
     // Step 3: Handle Verification
     const handleVerificationSuccess = async () => {
-        setStatusMsg("Identity Verified! Logging in...");
+        setStatusMsg(`${t('login.success')} Logging in...`);
         await Auth.login(currentUser);
         setTimeout(() => {
             navigate('/vote');
@@ -86,11 +88,11 @@ const Login = () => {
     return (
         <main>
             <div className="auth-container">
-                <h2>Voter Authentication</h2>
+                <h2>{t('login.title')}</h2>
                 <div id="login-steps">
                     {step === 1 && (
                         <div id="step-id">
-                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Step 1: Enter Voter ID</p>
+                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Step 1: {t('login.id_placeholder')}</p>
                             <form onSubmit={handleIdSubmit}>
                                 <div className="form-group">
                                     <label htmlFor="voterIdInput">Voter ID Number</label>
@@ -107,7 +109,7 @@ const Login = () => {
                                     />
                                 </div>
                                 <button type="submit" className="btn btn-primary" disabled={isVerifying}>
-                                    {isVerifying ? 'Checking...' : 'Next'}
+                                    {isVerifying ? t('login.verifying') : t('login.verify_btn')}
                                 </button>
                             </form>
                             {error && (
@@ -141,7 +143,7 @@ const Login = () => {
                             <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--success-color)' }}>
                                 <strong>Identity Check</strong>
                             </p>
-                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Please verify your identity.</p>
+                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>{t('login.face_auth')}</p>
 
                             <FaceScanner
                                 mode="verify"

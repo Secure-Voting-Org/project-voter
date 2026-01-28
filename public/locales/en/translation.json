@@ -1,0 +1,38 @@
+{
+    "navbar": {
+        "title": "TrustBallot",
+        "home": "Home",
+        "login": "Login",
+        "admin": "Admin Panel",
+        "booth": "Voting Booth",
+        "logout": "Logout"
+    },
+    "home": {
+        "title": "Secure. Transparent. Verifiable.",
+        "subtitle": "The future of democracy is here. Cast your vote with confidence using next-gen blockchain technology.",
+        "secure_auth": "Secure Authentication",
+        "secure_auth_desc": "Multi-factor verification ensures identity integrity.",
+        "verifiable": "Verifiable Ledger",
+        "verifiable_desc": "Your vote is recorded on an immutable blockchain.",
+        "privacy": "Privacy First",
+        "privacy_desc": "Your vote remains anonymous and encrypted.",
+        "login_btn": "Login to Vote"
+    },
+    "login": {
+        "title": "Voter Login",
+        "id_placeholder": "Enter Voter ID",
+        "verify_btn": "Verify ID",
+        "verifying": "Verifying...",
+        "face_auth": "Authenticate with Face",
+        "success": "Verified Successfully!",
+        "unauthorized": "Unauthorized access is prohibited."
+    },
+    "vote": {
+        "title": "Cast Your Vote",
+        "constituency": "Constituency",
+        "loading": "Loading Candidates...",
+        "cast_vote": "Vote",
+        "voted": "Voted",
+        "success_alert": "Vote Cast Successfully!"
+    }
+}
