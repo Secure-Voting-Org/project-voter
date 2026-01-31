@@ -35,7 +35,7 @@ export const matchFaces = (descriptor1, descriptor2) => {
 // Enroll Face (Testing Mode)
 export const enrollFace = async (voterId, descriptor) => {
     try {
-        const response = await fetch('http://localhost:5000/api/update-face', {
+        const response = await fetch(`http://${window.location.hostname}:5000/api/update-face`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ voterId, faceDescriptor: descriptor })

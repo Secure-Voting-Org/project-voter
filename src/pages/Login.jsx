@@ -4,16 +4,22 @@ import FaceScanner from '../components/FaceScanner';
 import { Auth } from '../utils/auth';
 import { enrollFace } from '../services/faceAuth';
 import { useTranslation } from 'react-i18next';
+import { useNFC } from '../hooks/useNFC';
+import { Wifi, XCircle } from 'lucide-react';
 
 const Login = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [step, setStep] = useState(1); // 1: ID, 2: Enroll (if needed), 3: Verify
+    const [step, setStep] = useState(1); // 1: ID, 3: Verify (Step 2 Enrollment removed)
     const [voterId, setVoterId] = useState('');
     const [error, setError] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [statusMsg, setStatusMsg] = useState('');
+
+    // NFC Hook
+    const { scan, stop: stopNFC, isReading, error: nfcError } = useNFC();
+    const [showNFCModal, setShowNFCModal] = useState(false);
 
     const hasValidFaceData = (user) => {
         return user.faceDescriptor &&
@@ -22,54 +28,65 @@ const Login = () => {
             user.faceDescriptor[0] !== 0.1; // Check against dummy data
     };
 
-    const handleIdSubmit = async (e) => {
-        e.preventDefault();
+    const handleNFCLogin = () => {
+        setShowNFCModal(true);
+        setError('');
+        scan((data) => {
+            // Support both internal ID and hardware Serial Number (UID)
+            const scannedId = data.id || data.serialNumber;
+
+            if (scannedId) {
+                setVoterId(scannedId);
+                stopNFC();
+                setShowNFCModal(false);
+                // Trigger auto-submit logic
+                verifyVoterId(scannedId);
+            } else {
+                setError("Invalid Card Data (No ID found)");
+            }
+        });
+    };
+
+    const simulateNFCLogin = () => {
+        const mockID = "ABC1234567"; // Use a known ID if possible, or random
+        setVoterId(mockID);
+        setShowNFCModal(false);
+        verifyVoterId(mockID);
+    };
+
+    // Refactored verification logic to be reusable
+    const verifyVoterId = async (id) => {
         setError('');
         setIsVerifying(true);
+        setStatusMsg("Verifying ID...");
 
         try {
-            const user = await Auth.verifyVoterId(voterId.toUpperCase());
+            const user = await Auth.verifyVoterId(id.toUpperCase());
             if (user) {
-                setCurrentUser({ id: voterId.toUpperCase(), ...user });
-
-                // DECISION: Enroll or Verify?
                 if (hasValidFaceData(user)) {
+                    setCurrentUser({ id: id.toUpperCase(), ...user });
                     setStep(3); // Go straight to Verify
                     setStatusMsg(`Welcome back, ${user.name}. Please verify your identity.`);
                 } else {
-                    setStep(2); // Go to Enroll
-                    setStatusMsg(`Welcome, ${user.name}. First time setup: Please scan your face to register.`);
+                    setError("Biometric data not found. Please visit a polling officer for registration.");
+                    setStatusMsg('');
                 }
             } else {
                 setError("Invalid Voter ID. Please try again.");
+                setStatusMsg('');
             }
         } catch (err) {
             setError("Server connection failed.");
+            setStatusMsg('');
         } finally {
             setIsVerifying(false);
         }
     };
 
-    // Step 2: Handle Enrollment
-    const handleEnrollment = async (descriptor) => {
-        try {
-            setStatusMsg("Registering face data...");
-            await enrollFace(currentUser.id, descriptor);
 
-            // Update local user data
-            const updatedUser = { ...currentUser, faceDescriptor: descriptor };
-            setCurrentUser(updatedUser);
-
-            setStatusMsg("Registration Successful! Now verifying identity...");
-
-            // Artificial delay to let user read message before switching context
-            setTimeout(() => {
-                setStep(3); // Move to Verify
-            }, 2000);
-
-        } catch (err) {
-            setStatusMsg("Registration Failed: " + err.message);
-        }
+    const handleIdSubmit = async (e) => {
+        e.preventDefault();
+        verifyVoterId(voterId);
     };
 
     // Step 3: Handle Verification
@@ -111,30 +128,70 @@ const Login = () => {
                                 <button type="submit" className="btn btn-primary" disabled={isVerifying}>
                                     {isVerifying ? t('login.verifying') : t('login.verify_btn')}
                                 </button>
+
+                                <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
+                                    <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                                    <span style={{ padding: '0 10px', color: '#888', fontSize: '0.9rem' }}>OR</span>
+                                    <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn"
+                                    onClick={handleNFCLogin}
+                                    style={{ width: '100%', background: '#212121', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                >
+                                    <Wifi size={18} /> Login with NFC Card
+                                </button>
                             </form>
+
+                            {/* NFC Modal Overlay */}
+                            {showNFCModal && (
+                                <div style={{
+                                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                    background: 'rgba(0,0,0,0.8)', zIndex: 1000,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <div style={{
+                                        background: 'white', padding: '2rem', borderRadius: '12px',
+                                        width: '90%', maxWidth: '400px', textAlign: 'center', position: 'relative'
+                                    }}>
+                                        <button
+                                            onClick={() => { setShowNFCModal(false); stopNFC(); }}
+                                            style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', cursor: 'pointer' }}
+                                        >
+                                            <XCircle size={24} color="#666" />
+                                        </button>
+
+                                        <Wifi size={64} style={{ color: '#1a73e8', marginBottom: '1.5rem', animation: 'pulse 1.5s infinite' }} />
+
+                                        <h3>Ready to Scan</h3>
+                                        <p style={{ color: '#666', marginBottom: '2rem' }}>
+                                            Hold your Voter ID card near the back of your device.
+                                        </p>
+
+                                        {nfcError && (
+                                            <div style={{ color: '#dc3545', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                                                {nfcError}
+                                            </div>
+                                        )}
+
+                                        <div style={{ paddingTop: '1rem', borderTop: '1px solid #eee' }}>
+                                            <button
+                                                onClick={simulateNFCLogin}
+                                                style={{ background: 'none', border: 'none', color: '#1a73e8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
+                                            >
+                                                (Dev) Simulate Tap
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {error && (
                                 <div style={{ color: '#dc3545', textAlign: 'center', marginTop: '1rem', fontWeight: 'bold' }}>
                                     {error}
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {step === 2 && (
-                        <div id="step-enroll">
-                            <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--primary-color)' }}>
-                                <strong>Registration Required</strong>
-                            </p>
-                            <p style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                                We need to capture your face data for future verification.
-                                <br />Please look at the camera.
-                            </p>
-
-                            <FaceScanner
-                                mode="enroll"
-                                onEnroll={handleEnrollment}
-                                onScanFailure={handleScanFailure}
-                            />
                         </div>
                     )}
 
@@ -151,15 +208,6 @@ const Login = () => {
                                 onScanSuccess={handleVerificationSuccess}
                                 onScanFailure={handleScanFailure}
                             />
-
-                            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                                <button
-                                    className="btn btn-outline-secondary btn-sm"
-                                    onClick={() => setStep(2)}
-                                >
-                                    Issues? Re-Register Face
-                                </button>
-                            </div>
                         </div>
                     )}
 
