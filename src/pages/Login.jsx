@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import FaceScanner from '../components/FaceScanner';
 import { Auth } from '../utils/auth';
 import { enrollFace } from '../services/faceAuth';
@@ -187,6 +187,14 @@ const Login = () => {
                                     </div>
                                 </div>
                             )}
+                            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                                <Link
+                                    to="/recovery"
+                                    className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    Forgot Password / Locked Out?
+                                </Link>
+                            </div>
                             {error && (
                                 <div style={{ color: '#dc3545', textAlign: 'center', marginTop: '1rem', fontWeight: 'bold' }}>
                                     {error}
