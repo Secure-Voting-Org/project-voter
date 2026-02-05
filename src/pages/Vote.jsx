@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Auth } from '../utils/auth';
 import { useTranslation } from 'react-i18next';
+import BallotLoader from '../components/BallotLoader';
 
 const Vote = () => {
     const navigate = useNavigate();
@@ -17,32 +18,13 @@ const Vote = () => {
             navigate('/login');
             return;
         }
-
-        const currentUser = Auth.getUser();
-        setUser(currentUser);
-
-        // Fetch Candidates based on Constituency
-        if (currentUser && currentUser.constituency) {
-            const fetchCandidates = async () => {
-                try {
-                    const response = await fetch(`${Auth.API_URL}/candidates?constituency=${encodeURIComponent(currentUser.constituency)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        setCandidates(data);
-                    } else {
-                        console.error("Failed to fetch candidates");
-                    }
-                } catch (error) {
-                    console.error("Network error:", error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchCandidates();
-        } else {
-            setLoading(false);
-        }
+        setUser(Auth.getUser());
     }, [navigate]);
+
+    const handleCandidatesLoad = useCallback((data) => {
+        setCandidates(data);
+        setLoading(false);
+    }, []);
 
     const handleVote = async () => {
         if (!selectedCandidateId) return;
@@ -81,7 +63,6 @@ const Vote = () => {
         }
     };
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>{t('vote.loading')}</div>;
     if (!user) return null;
 
     return (
@@ -91,42 +72,49 @@ const Vote = () => {
                 <div style={{ textAlign: 'center', marginBottom: '1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
                     Voter: {user.name} | {t('vote.constituency')}: {user.constituency}
                 </div>
-                <p style={{ textAlign: 'center', marginBottom: '3rem', color: 'var(--secondary-color)' }}>
-                    Please select one candidate from the list below. Your vote is encrypted and anonymous.
-                </p>
 
-                {candidates.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'red' }}>No candidates found for this constituency.</div>
-                ) : (
-                    <div className="candidate-grid">
-                        {candidates.map(c => (
-                            <div
-                                key={c.id}
-                                className={`candidate-card ${selectedCandidateId === c.id ? 'selected' : ''}`}
-                                onClick={() => setSelectedCandidateId(c.id)}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <div className="candidate-icon" style={{ backgroundColor: `${c.color}20`, color: c.color }}>
-                                    {c.symbol}
+                <BallotLoader
+                    voterId={user.id}
+                    onCandidatesLoad={handleCandidatesLoad}
+                    t={t}
+                />
+
+                {candidates.length > 0 && (
+                    <>
+                        <p style={{ textAlign: 'center', marginBottom: '3rem', color: 'var(--secondary-color)' }}>
+                            Please select one candidate from the list below. Your vote is encrypted and anonymous.
+                        </p>
+
+                        <div className="candidate-grid">
+                            {candidates.map(c => (
+                                <div
+                                    key={c.id}
+                                    className={`candidate-card ${selectedCandidateId === c.id ? 'selected' : ''}`}
+                                    onClick={() => setSelectedCandidateId(c.id)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <div className="candidate-icon" style={{ backgroundColor: `${c.color}20`, color: c.color }}>
+                                        {c.symbol}
+                                    </div>
+                                    <h3>{c.name}</h3>
+                                    <p className="party-name">{c.party}</p>
+                                    <div className="selection-indicator"></div>
                                 </div>
-                                <h3>{c.name}</h3>
-                                <p className="party-name">{c.party}</p>
-                                <div className="selection-indicator"></div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            ))}
+                        </div>
 
-                <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-                    <button
-                        className="btn btn-primary"
-                        style={{ maxWidth: '300px', margin: '0 auto', backgroundColor: selectedCandidateId ? 'var(--primary-color)' : '#ccc' }}
-                        disabled={!selectedCandidateId || isVoting}
-                        onClick={handleVote}
-                    >
-                        {isVoting ? 'Encrypting...' : (selectedCandidateId ? `${t('vote.cast_vote')} for ${candidates.find(c => c.id === selectedCandidateId)?.name}` : t('vote.cast_vote'))}
-                    </button>
-                </div>
+                        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ maxWidth: '300px', margin: '0 auto', backgroundColor: selectedCandidateId ? 'var(--primary-color)' : '#ccc' }}
+                                disabled={!selectedCandidateId || isVoting}
+                                onClick={handleVote}
+                            >
+                                {isVoting ? 'Encrypting...' : (selectedCandidateId ? `${t('vote.cast_vote')} for ${candidates.find(c => c.id === selectedCandidateId)?.name}` : t('vote.cast_vote'))}
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </main>
     );
