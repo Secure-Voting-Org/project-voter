@@ -31,7 +31,6 @@
         "title": "Cast Your Vote",
         "constituency": "Constituency",
         "loading": "Loading Candidates...",
-        "loading_ballot": "Retrieving your localized ballot...",
         "cast_vote": "Vote",
         "voted": "Voted",
         "success_alert": "Vote Cast Successfully!"

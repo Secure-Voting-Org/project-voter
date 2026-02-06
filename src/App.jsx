@@ -5,7 +5,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import Vote from './pages/Vote';
-import Recovery from './pages/Recovery';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -20,7 +19,6 @@ function App() {
 
           <Route path="/admin" element={<Admin />} />
           <Route path="/vote" element={<Vote />} />
-          <Route path="/recovery" element={<Recovery />} />
         </Routes>
       </Router>
     </AuthProvider>

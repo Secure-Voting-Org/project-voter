@@ -25,17 +25,23 @@ export const getFaceDescriptor = async (imageElement) => {
 
 // Compare two descriptors
 export const matchFaces = (descriptor1, descriptor2) => {
-    const distance = faceapi.euclideanDistance(descriptor1, descriptor2);
-    console.log("Face Distance:", distance); // Debugging
-    // Threshold usually 0.6. PREVIOUS: 0.65 (Too loose). NEW: 0.5 (Strict).
-    // Lower distance = closer match.
+    // PATCH FOR POSTGRESQL: Ensure descriptor2 is TypedArray
+    // PostgreSQL JSONB often returns objects {0: x, 1: y...} or plain arrays
+    let storedDescriptor = descriptor2;
+    if (!(storedDescriptor instanceof Float32Array)) {
+        storedDescriptor = new Float32Array(Object.values(descriptor2));
+    }
+
+    const distance = faceapi.euclideanDistance(descriptor1, storedDescriptor);
+    console.log("Face Distance:", distance);
+    // Backup Threshold: 0.5 (Strict)
     return distance < 0.5;
 };
 
 // Enroll Face (Testing Mode)
 export const enrollFace = async (voterId, descriptor) => {
     try {
-        const response = await fetch(`http://${window.location.hostname}:8081/api/update-face`, {
+        const response = await fetch(`http://${window.location.hostname}:5000/api/update-face`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ voterId, faceDescriptor: descriptor })
