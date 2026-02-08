@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Auth } from '../utils/auth';
 import { useTranslation } from 'react-i18next';
+import ConfirmationModal from '../components/ConfirmationModal';
+import EncryptionWorker from '../workers/encryption.worker?worker'; // Vite Worker Import
 
 const Vote = () => {
     const navigate = useNavigate();
@@ -11,6 +13,8 @@ const Vote = () => {
     const [isVoting, setIsVoting] = useState(false);
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [publicKey, setPublicKey] = useState(null);
 
     useEffect(() => {
         if (!Auth.isAuthenticated()) {
@@ -20,6 +24,29 @@ const Vote = () => {
 
         const currentUser = Auth.getUser();
         setUser(currentUser);
+
+        // Fetch Election Public Key
+        const fetchPublicKey = async () => {
+            const cached = sessionStorage.getItem('election_public_key');
+            if (cached) {
+                setPublicKey(JSON.parse(cached));
+                return;
+            }
+
+            try {
+                const response = await fetch(`${Auth.API_URL}/election/public-key`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setPublicKey(data);
+                    sessionStorage.setItem('election_public_key', JSON.stringify(data));
+                } else {
+                    console.error("Failed to fetch election key");
+                }
+            } catch (error) {
+                console.error("Network error fetching key:", error);
+            }
+        };
+        fetchPublicKey();
 
         // Fetch Candidates based on Constituency
         if (currentUser && currentUser.constituency) {
@@ -44,40 +71,71 @@ const Vote = () => {
         }
     }, [navigate]);
 
-    const handleVote = async () => {
+    const handleVoteClick = () => {
         if (!selectedCandidateId) return;
+        setShowModal(true);
+    };
 
-        const candidate = candidates.find(c => c.id === selectedCandidateId);
+    const confirmVote = async () => {
+        if (!publicKey) {
+            alert("Election system not ready (Missing Public Key). Please try again later.");
+            return;
+        }
 
-        if (window.confirm(`CONFIRM VOTE:\n\nYou are about to cast your vote for:\n\n${candidate.name}\n${candidate.party}\n\nThis action cannot be undone.`)) {
-            setIsVoting(true);
+        setIsVoting(true);
+        setShowModal(false);
 
-            try {
-                const response = await fetch(`${Auth.API_URL}/vote`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        voterId: user.id,
-                        candidateId: selectedCandidateId,
-                        constituency: user.constituency
-                    })
+        try {
+            // 1. Encrypt Vote in Background Worker
+            const worker = new EncryptionWorker();
+
+            console.log("Starting encryption with candidateId:", selectedCandidateId);
+            const encryptedVote = await new Promise((resolve, reject) => {
+                worker.postMessage({
+                    candidateId: selectedCandidateId,
+                    publicKeyData: publicKey
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    alert(`${t('vote.success_alert')}\n\nBlockchain Transaction Hash:\n` + data.transactionHash);
-                    Auth.logout();
-                    navigate('/');
-                } else {
-                    const err = await response.json();
-                    alert("Voting Failed: " + (err.error || "Unknown Error"));
-                    setIsVoting(false);
-                }
-            } catch (error) {
-                console.error("Voting error", error);
-                alert("Network Error: Could not cast vote.");
+                worker.onmessage = (e) => {
+                    if (e.data.success) {
+                        resolve(e.data.encryptedVote);
+                    } else {
+                        reject(new Error(e.data.error));
+                    }
+                    worker.terminate();
+                };
+
+                worker.onerror = (err) => {
+                    reject(err);
+                    worker.terminate();
+                };
+            });
+
+            console.log("Vote Encrypted:", encryptedVote);
+
+            // 2. Submit Encrypted Vote
+            const response = await fetch(`${Auth.API_URL}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    voterId: user.id,
+                    candidateId: encryptedVote, // Sending Ciphertext now
+                    constituency: user.constituency
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                navigate('/vote-success', { state: { transactionHash: data.transactionHash } });
+            } else {
+                const err = await response.json();
+                alert("Voting Failed: " + (err.error || "Unknown Error"));
                 setIsVoting(false);
             }
+        } catch (error) {
+            console.error("Voting error", error);
+            alert("Error: Could not cast vote. Encryption or Network failed.");
+            setIsVoting(false);
         }
     };
 
@@ -122,11 +180,18 @@ const Vote = () => {
                         className="btn btn-primary"
                         style={{ maxWidth: '300px', margin: '0 auto', backgroundColor: selectedCandidateId ? 'var(--primary-color)' : '#ccc' }}
                         disabled={!selectedCandidateId || isVoting}
-                        onClick={handleVote}
+                        onClick={handleVoteClick}
                     >
-                        {isVoting ? 'Encrypting...' : (selectedCandidateId ? `${t('vote.cast_vote')} for ${candidates.find(c => c.id === selectedCandidateId)?.name}` : t('vote.cast_vote'))}
+                        {isVoting ? 'Encrypting...' : t('vote.cast_vote')}
                     </button>
                 </div>
+
+                <ConfirmationModal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    onConfirm={confirmVote}
+                    candidate={candidates.find(c => c.id === selectedCandidateId)}
+                />
             </div>
         </main>
     );

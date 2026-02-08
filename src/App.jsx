@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import Vote from './pages/Vote';
+import VoteSuccess from './pages/VoteSuccess';
 
 import { AuthProvider } from './context/AuthContext';
 
+import { Auth } from './utils/auth';
+
 function App() {
+  useEffect(() => {
+    const fetchKey = async () => {
+      if (!sessionStorage.getItem('election_public_key')) {
+        try {
+          const response = await fetch(`${Auth.API_URL}/election/public-key`);
+          if (response.ok) {
+            const key = await response.json();
+            sessionStorage.setItem('election_public_key', JSON.stringify(key));
+            console.log("Election Key Cached");
+          }
+        } catch (e) {
+          console.error("Failed to cache election key", e);
+        }
+      }
+    };
+    fetchKey();
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
@@ -19,6 +40,7 @@ function App() {
 
           <Route path="/admin" element={<Admin />} />
           <Route path="/vote" element={<Vote />} />
+          <Route path="/vote-success" element={<VoteSuccess />} />
         </Routes>
       </Router>
     </AuthProvider>

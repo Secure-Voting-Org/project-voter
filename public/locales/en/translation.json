@@ -33,6 +33,10 @@
         "loading": "Loading Candidates...",
         "cast_vote": "Vote",
         "voted": "Voted",
-        "success_alert": "Vote Cast Successfully!"
+        "success_alert": "Vote Cast Successfully!",
+        "confirm_title": "Confirm Your Vote",
+        "confirm_desc": "You are about to cast your vote for:",
+        "confirm_btn": "Confirm Vote",
+        "cancel_btn": "Cancel"
     }
 }
