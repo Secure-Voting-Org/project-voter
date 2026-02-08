@@ -1,15 +1,23 @@
 // Basic Authentication Utilities
 export const Auth = {
     // API Base URL
-    API_URL: `http://${window.location.hostname}:8081/api`,
+    API_URL: `http://${window.location.hostname}:5000/api`,
 
-    // Verify Voter ID
-    verifyVoterId: async (id) => {
+    // Verify Voter ID (Supports Plain ID or Encrypted Payload)
+    verifyVoterId: async (identifier) => {
         try {
+            let body = {};
+            if (typeof identifier === 'string') {
+                body = { voterId: identifier };
+            } else if (typeof identifier === 'object') {
+                // Expects { voterId, encryptedData, ... }
+                body = identifier;
+            }
+
             const response = await fetch(`${Auth.API_URL}/verify-voter`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voterId: id })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {

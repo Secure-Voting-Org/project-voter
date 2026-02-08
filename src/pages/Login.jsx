@@ -36,11 +36,15 @@ const Login = () => {
             const scannedId = data.id || data.serialNumber;
 
             if (scannedId) {
+                // If we have encrypted data, pass the whole object
+                // Otherwise just pass the ID string
+                const payload = data.encryptedData ? data : scannedId;
+
                 setVoterId(scannedId);
                 stopNFC();
                 setShowNFCModal(false);
                 // Trigger auto-submit logic
-                verifyVoterId(scannedId);
+                verifyVoterId(payload);
             } else {
                 setError("Invalid Card Data (No ID found)");
             }
