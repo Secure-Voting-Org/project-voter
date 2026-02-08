@@ -113,13 +113,45 @@ const Vote = () => {
 
             console.log("Vote Encrypted:", encryptedVote);
 
-            // 2. Submit Encrypted Vote
+            // --- BLIND SIGNATURE FLOW ---
+
+            // 1a. Fetch Blind Signature Keys
+            const keyRes = await fetch(`${Auth.API_URL}/blind-signature/keys`);
+            if (!keyRes.ok) throw new Error("Failed to fetch blind signature keys");
+            const keys = await keyRes.json(); // { n, e }
+
+            // 1b. Generate Token & Blind It
+            const BlindSignature = (await import('../utils/BlindSignature')).default;
+            const token = BlindSignature.generateToken();
+            const { blinded, r } = BlindSignature.blind(token, keys.e, keys.n);
+
+            console.log("Blinded Token Generated for Signing");
+
+            // 1c. Rest Blind Signature from Authority
+            const signRes = await fetch(`${Auth.API_URL}/blind-sign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    blinded_token: blinded,
+                    voterId: user.id
+                })
+            });
+
+            if (!signRes.ok) throw new Error("Failed to obtain blind signature. You may have already voted.");
+            const signData = await signRes.json();
+
+            // 1d. Unblind the Signature
+            const unblindedSignature = BlindSignature.unblind(signData.signature, r, keys.n);
+            console.log("Signature Unblinded Successfully");
+
+            // 2. Submit Encrypted Vote (Anonymous)
             const response = await fetch(`${Auth.API_URL}/vote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    voterId: user.id,
-                    candidateId: encryptedVote, // Sending Ciphertext now
+                    vote: encryptedVote, // Ciphertext
+                    auth_token: token,   // original Token (Message)
+                    signature: unblindedSignature, // Valid Signature
                     constituency: user.constituency
                 })
             });
@@ -134,7 +166,7 @@ const Vote = () => {
             }
         } catch (error) {
             console.error("Voting error", error);
-            alert("Error: Could not cast vote. Encryption or Network failed.");
+            alert("Error: " + error.message);
             setIsVoting(false);
         }
     };
