@@ -1,7 +1,7 @@
 // Basic Authentication Utilities
 export const Auth = {
     // API Base URL
-    API_URL: `http://${window.location.hostname}:5000/api`,
+    API_URL: `http://${window.location.hostname}:5001/api`,
 
     // Verify Voter ID (Supports Plain ID or Encrypted Payload)
     verifyVoterId: async (identifier) => {
