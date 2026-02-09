@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Auth } from '../utils/auth';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
+import useInactivityTimer from '../hooks/useInactivityTimer';
 import ConfirmationModal from '../components/ConfirmationModal';
 import EncryptionWorker from '../workers/encryption.worker?worker'; // Vite Worker Import
 
 const Vote = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { logout } = useAuth(); // Get logout function from context
     const [user, setUser] = useState(null);
     const [selectedCandidateId, setSelectedCandidateId] = useState(null);
     const [isVoting, setIsVoting] = useState(false);
@@ -15,6 +18,23 @@ const Vote = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [publicKey, setPublicKey] = useState(null);
+
+    // Inactivity Timeout Handler
+    const handleTimeout = () => {
+        console.log("User inactive. Logging out.");
+
+        // 1. Clear Session Keys
+        sessionStorage.removeItem('election_public_key');
+
+        // 2. Logout User (clears localStorage and Context)
+        logout();
+
+        // 3. Redirect to Home
+        navigate('/');
+    };
+
+    // Initialize 15-second inactivity timer for testing
+    useInactivityTimer(15000, handleTimeout);
 
     useEffect(() => {
         if (!Auth.isAuthenticated()) {
