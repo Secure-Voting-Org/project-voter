@@ -20,11 +20,20 @@ export const useNFC = () => {
             await ndef.scan({ signal: abortController.current.signal });
 
             ndef.onreading = event => {
+                console.log("NFC Read Event:", event);
+                console.log("NFC Serial Number:", event.serialNumber);
+
                 const decoder = new TextDecoder();
                 // Initialize with serialNumber (UID) of the tag
-                let data = { serialNumber: event.serialNumber };
+                let data = { serialNumber: event.serialNumber || "" };
+
+                // Log if serialNumber is missing
+                if (!event.serialNumber) {
+                    console.warn("NFC Warning: Serial Number is empty or undefined");
+                }
 
                 for (const record of event.message.records) {
+                    console.log("NFC Record:", record);
                     if (record.recordType === "text") {
                         const text = decoder.decode(record.data);
                         try {
@@ -40,6 +49,8 @@ export const useNFC = () => {
                         data = { ...data, ...json };
                     }
                 }
+
+                console.log("Final NFC Data Payload:", data);
                 onReading(data);
             };
 

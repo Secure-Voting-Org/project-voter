@@ -32,6 +32,8 @@ const Login = () => {
         setShowNFCModal(true);
         setError('');
         scan((data) => {
+            console.log("Login Page - NFC Data Received:", data);
+
             // Support both internal ID and hardware Serial Number (UID)
             const scannedId = data.id || data.serialNumber;
 
@@ -46,7 +48,8 @@ const Login = () => {
                 // Trigger auto-submit logic
                 verifyVoterId(payload);
             } else {
-                setError("Invalid Card Data (No ID found)");
+                console.error("NFC Error: No ID found in tag data", data);
+                setError(`Tag detected but no ID found. Serial: '${data.serialNumber || 'N/A'}'`);
             }
         });
     };
