@@ -110,7 +110,7 @@ const Vote = () => {
             const worker = new EncryptionWorker();
 
             console.log("Starting encryption with candidateId:", selectedCandidateId);
-            const encryptedVote = await new Promise((resolve, reject) => {
+            const { encryptedVote, rangeProof } = await new Promise((resolve, reject) => {
                 worker.postMessage({
                     candidateId: selectedCandidateId,
                     publicKeyData: publicKey
@@ -118,7 +118,8 @@ const Vote = () => {
 
                 worker.onmessage = (e) => {
                     if (e.data.success) {
-                        resolve(e.data.encryptedVote);
+                        // Module 4.7: receive rangeProof alongside the ciphertext
+                        resolve({ encryptedVote: e.data.encryptedVote, rangeProof: e.data.rangeProof });
                     } else {
                         reject(new Error(e.data.error));
                     }
@@ -172,7 +173,8 @@ const Vote = () => {
                     vote: encryptedVote, // Ciphertext
                     auth_token: token,   // original Token (Message)
                     signature: unblindedSignature, // Valid Signature
-                    constituency: user.constituency
+                    constituency: user.constituency,
+                    range_proof: rangeProof  // Module 4.7: ZK Range Proof for binary vote validation
                 })
             });
 
