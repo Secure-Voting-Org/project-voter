@@ -7,6 +7,7 @@ import Admin from './pages/Admin';
 import Vote from './pages/Vote';
 import VoteSuccess from './pages/VoteSuccess';
 
+
 import { AuthProvider } from './context/AuthContext';
 
 import { Auth } from './utils/auth';
@@ -42,6 +43,7 @@ function App() {
           <Route path="/vote" element={<Vote />} />
           <Route path="/vote-success" element={<VoteSuccess />} />
         </Routes>
+
       </Router>
     </AuthProvider>
   );

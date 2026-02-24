@@ -33,8 +33,8 @@ const Vote = () => {
         navigate('/');
     };
 
-    // Initialize 15-second inactivity timer for testing
-    useInactivityTimer(15000, handleTimeout);
+    // Initialize 2-minute inactivity timer
+    useInactivityTimer(120000, handleTimeout);
 
     useEffect(() => {
         if (!Auth.isAuthenticated()) {
@@ -229,6 +229,7 @@ const Vote = () => {
 
                 <div style={{ textAlign: 'center', marginTop: '3rem' }}>
                     <button
+                        id="main-vote-button"
                         className="btn btn-primary"
                         style={{ maxWidth: '300px', margin: '0 auto', backgroundColor: selectedCandidateId ? 'var(--primary-color)' : '#ccc' }}
                         disabled={!selectedCandidateId || isVoting}
