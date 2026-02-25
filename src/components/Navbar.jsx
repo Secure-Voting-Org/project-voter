@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
-
+import AudioAssist from './AudioAssist';
 const Navbar = () => {
     const { user, isLoggedIn, logout } = useAuth();
     const { t } = useTranslation();
@@ -37,6 +37,7 @@ const Navbar = () => {
                     </>
                 )}
                 <LanguageSwitcher />
+                <AudioAssist />
             </nav>
         </header>
     );
