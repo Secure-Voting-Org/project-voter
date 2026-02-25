@@ -18,6 +18,7 @@ const Vote = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [publicKey, setPublicKey] = useState(null);
+    const [voteError, setVoteError] = useState(null); // Module 5.1 — phase-aware error display
 
     // Inactivity Timeout Handler
     const handleTimeout = () => {
@@ -104,6 +105,32 @@ const Vote = () => {
 
         setIsVoting(true);
         setShowModal(false);
+        setVoteError(null);
+
+        // Module 5.1 — Check election phase FIRST before any network calls
+        try {
+            const phaseRes = await fetch(`${Auth.API_URL}/election/status`);
+            if (phaseRes.ok) {
+                const phaseData = await phaseRes.json();
+                if (phaseData.phase === 'PRE_POLL') {
+                    setVoteError({ icon: '🕐', title: 'Voting Has Not Started Yet', body: 'The election has not begun. Please check back later.' });
+                    setIsVoting(false);
+                    return;
+                }
+                if (phaseData.phase === 'POST_POLL') {
+                    setVoteError({ icon: '🔒', title: 'Voting Has Closed', body: 'The election has ended. Thank you for your participation.' });
+                    setIsVoting(false);
+                    return;
+                }
+                if (phaseData.is_kill_switch_active) {
+                    setVoteError({ icon: '⚠️', title: 'Voting Temporarily Suspended', body: 'The election has been paused by the administrator. Please try again later.' });
+                    setIsVoting(false);
+                    return;
+                }
+            }
+        } catch {
+            // If phase check fails, let the existing backend middleware handle it
+        }
 
         try {
             // 1. Encrypt Vote in Background Worker
@@ -183,12 +210,22 @@ const Vote = () => {
                 navigate('/vote-success', { state: { transactionHash: data.transactionHash } });
             } else {
                 const err = await response.json();
-                alert("Voting Failed: " + (err.error || "Unknown Error"));
+                const msg = err.error || 'Unknown Error';
+                // Module 5.1 — show phase-specific styled messages instead of raw alert
+                if (msg === 'Election Not Started') {
+                    setVoteError({ icon: '🕐', title: 'Voting Has Not Started Yet', body: 'The election has not begun. Please check back later.' });
+                } else if (msg === 'Election Has Ended') {
+                    setVoteError({ icon: '🔒', title: 'Voting Has Closed', body: 'The election has ended. Thank you for your participation.' });
+                } else if (msg.includes('suspended')) {
+                    setVoteError({ icon: '⚠️', title: 'Voting Temporarily Suspended', body: 'The election has been paused by the administrator. Please try again later.' });
+                } else {
+                    setVoteError({ icon: '❌', title: 'Voting Failed', body: msg });
+                }
                 setIsVoting(false);
             }
         } catch (error) {
             console.error("Voting error", error);
-            alert("Error: " + error.message);
+            setVoteError({ icon: '❌', title: 'Voting Error', body: error.message });
             setIsVoting(false);
         }
     };
@@ -206,6 +243,32 @@ const Vote = () => {
                 <p style={{ textAlign: 'center', marginBottom: '3rem', color: 'var(--secondary-color)' }}>
                     Please select one candidate from the list below. Your vote is encrypted and anonymous.
                 </p>
+
+                {/* Module 5.1 — Phase-aware error banner */}
+                {voteError && (
+                    <div style={{
+                        background: '#FFF3CD',
+                        border: '1px solid #FFC107',
+                        borderRadius: '10px',
+                        padding: '1.5rem 2rem',
+                        marginBottom: '2rem',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{voteError.icon}</div>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem', color: '#856404' }}>{voteError.title}</div>
+                        <div style={{ color: '#6D5206', fontSize: '0.9rem' }}>{voteError.body}</div>
+                        <button onClick={() => setVoteError(null)} style={{
+                            marginTop: '1rem',
+                            background: 'none',
+                            border: '1px solid #856404',
+                            borderRadius: '6px',
+                            padding: '0.3rem 1rem',
+                            cursor: 'pointer',
+                            color: '#856404',
+                            fontWeight: 600
+                        }}>Dismiss</button>
+                    </div>
+                )}
 
                 {candidates.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'red' }}>No candidates found for this constituency.</div>
