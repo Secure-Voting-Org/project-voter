@@ -46,12 +46,11 @@ self.onmessage = async (e) => {
         // Send back the hex string (or decimal string) of the BigInt
         self.postMessage({
             success: true,
-<<<<<<< HEAD
             encryptedVote: JSON.stringify(encryptedVector)
-=======
+
             encryptedVote: encrypted.toString(),
             rangeProof  // Attach proof alongside ciphertext
->>>>>>> 0d145f70cf763676bdda042aa483321df64d5f78
+
         });
 
     } catch (error) {

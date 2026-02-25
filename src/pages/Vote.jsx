@@ -136,14 +136,13 @@ const Vote = () => {
             // 1. Encrypt Vote in Background Worker
             const worker = new EncryptionWorker();
 
-<<<<<<< HEAD
             console.log("Starting encryption for vector vote. Selected:", selectedCandidateId);
             const candidateIds = candidates.map(c => c.id);
             const encryptedVote = await new Promise((resolve, reject) => {
-=======
+
             console.log("Starting encryption with candidateId:", selectedCandidateId);
             const { encryptedVote, rangeProof } = await new Promise((resolve, reject) => {
->>>>>>> 0d145f70cf763676bdda042aa483321df64d5f78
+
                 worker.postMessage({
                     candidateIds: candidateIds,
                     selectedCandidateId: selectedCandidateId,
