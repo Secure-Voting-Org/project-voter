@@ -21,6 +21,7 @@ const Navbar = () => {
             </Link>
             <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Link to="/">{t('navbar.home')}</Link>
+                <Link to="/search">Track Receipt</Link>
                 {!isLoggedIn ? (
                     <>
                         <Link to="/login">{t('navbar.login')}</Link>
