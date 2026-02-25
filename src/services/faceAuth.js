@@ -1,4 +1,5 @@
 import * as faceapi from 'face-api.js';
+import API_BASE from '../config/api';
 
 // Load models
 export const loadModels = async () => {
@@ -41,7 +42,7 @@ export const matchFaces = (descriptor1, descriptor2) => {
 // Enroll Face (Testing Mode)
 export const enrollFace = async (voterId, descriptor) => {
     try {
-        const response = await fetch('/api/update-face', {
+        const response = await fetch(`${API_BASE}/api/update-face`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ voterId, faceDescriptor: descriptor })
