@@ -18,6 +18,7 @@ const Vote = () => {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [publicKey, setPublicKey] = useState(null);
+    const [voteError, setVoteError] = useState(null); // Module 5.1 — phase-aware error display
 
     // Inactivity Timeout Handler
     const handleTimeout = () => {
@@ -33,8 +34,8 @@ const Vote = () => {
         navigate('/');
     };
 
-    // Initialize 15-second inactivity timer for testing
-    useInactivityTimer(15000, handleTimeout);
+    // Initialize 2-minute inactivity timer
+    useInactivityTimer(120000, handleTimeout);
 
     useEffect(() => {
         if (!Auth.isAuthenticated()) {
@@ -104,21 +105,55 @@ const Vote = () => {
 
         setIsVoting(true);
         setShowModal(false);
+        setVoteError(null);
+
+        // Module 5.1 — Check election phase FIRST before any network calls
+        try {
+            const phaseRes = await fetch(`${Auth.API_URL}/election/status`);
+            if (phaseRes.ok) {
+                const phaseData = await phaseRes.json();
+                if (phaseData.phase === 'PRE_POLL') {
+                    setVoteError({ icon: '🕐', title: 'Voting Has Not Started Yet', body: 'The election has not begun. Please check back later.' });
+                    setIsVoting(false);
+                    return;
+                }
+                if (phaseData.phase === 'POST_POLL') {
+                    setVoteError({ icon: '🔒', title: 'Voting Has Closed', body: 'The election has ended. Thank you for your participation.' });
+                    setIsVoting(false);
+                    return;
+                }
+                if (phaseData.is_kill_switch_active) {
+                    setVoteError({ icon: '⚠️', title: 'Voting Temporarily Suspended', body: 'The election has been paused by the administrator. Please try again later.' });
+                    setIsVoting(false);
+                    return;
+                }
+            }
+        } catch {
+            // If phase check fails, let the existing backend middleware handle it
+        }
 
         try {
             // 1. Encrypt Vote in Background Worker
             const worker = new EncryptionWorker();
 
-            console.log("Starting encryption with candidateId:", selectedCandidateId);
+<<<<<<< HEAD
+            console.log("Starting encryption for vector vote. Selected:", selectedCandidateId);
+            const candidateIds = candidates.map(c => c.id);
             const encryptedVote = await new Promise((resolve, reject) => {
+=======
+            console.log("Starting encryption with candidateId:", selectedCandidateId);
+            const { encryptedVote, rangeProof } = await new Promise((resolve, reject) => {
+>>>>>>> 0d145f70cf763676bdda042aa483321df64d5f78
                 worker.postMessage({
-                    candidateId: selectedCandidateId,
+                    candidateIds: candidateIds,
+                    selectedCandidateId: selectedCandidateId,
                     publicKeyData: publicKey
                 });
 
                 worker.onmessage = (e) => {
                     if (e.data.success) {
-                        resolve(e.data.encryptedVote);
+                        // Module 4.7: receive rangeProof alongside the ciphertext
+                        resolve({ encryptedVote: e.data.encryptedVote, rangeProof: e.data.rangeProof });
                     } else {
                         reject(new Error(e.data.error));
                     }
@@ -172,7 +207,8 @@ const Vote = () => {
                     vote: encryptedVote, // Ciphertext
                     auth_token: token,   // original Token (Message)
                     signature: unblindedSignature, // Valid Signature
-                    constituency: user.constituency
+                    constituency: user.constituency,
+                    range_proof: rangeProof  // Module 4.7: ZK Range Proof for binary vote validation
                 })
             });
 
@@ -181,12 +217,22 @@ const Vote = () => {
                 navigate('/vote-success', { state: { transactionHash: data.transactionHash } });
             } else {
                 const err = await response.json();
-                alert("Voting Failed: " + (err.error || "Unknown Error"));
+                const msg = err.error || 'Unknown Error';
+                // Module 5.1 — show phase-specific styled messages instead of raw alert
+                if (msg === 'Election Not Started') {
+                    setVoteError({ icon: '🕐', title: 'Voting Has Not Started Yet', body: 'The election has not begun. Please check back later.' });
+                } else if (msg === 'Election Has Ended') {
+                    setVoteError({ icon: '🔒', title: 'Voting Has Closed', body: 'The election has ended. Thank you for your participation.' });
+                } else if (msg.includes('suspended')) {
+                    setVoteError({ icon: '⚠️', title: 'Voting Temporarily Suspended', body: 'The election has been paused by the administrator. Please try again later.' });
+                } else {
+                    setVoteError({ icon: '❌', title: 'Voting Failed', body: msg });
+                }
                 setIsVoting(false);
             }
         } catch (error) {
             console.error("Voting error", error);
-            alert("Error: " + error.message);
+            setVoteError({ icon: '❌', title: 'Voting Error', body: error.message });
             setIsVoting(false);
         }
     };
@@ -204,6 +250,32 @@ const Vote = () => {
                 <p style={{ textAlign: 'center', marginBottom: '3rem', color: 'var(--secondary-color)' }}>
                     Please select one candidate from the list below. Your vote is encrypted and anonymous.
                 </p>
+
+                {/* Module 5.1 — Phase-aware error banner */}
+                {voteError && (
+                    <div style={{
+                        background: '#FFF3CD',
+                        border: '1px solid #FFC107',
+                        borderRadius: '10px',
+                        padding: '1.5rem 2rem',
+                        marginBottom: '2rem',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{voteError.icon}</div>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem', color: '#856404' }}>{voteError.title}</div>
+                        <div style={{ color: '#6D5206', fontSize: '0.9rem' }}>{voteError.body}</div>
+                        <button onClick={() => setVoteError(null)} style={{
+                            marginTop: '1rem',
+                            background: 'none',
+                            border: '1px solid #856404',
+                            borderRadius: '6px',
+                            padding: '0.3rem 1rem',
+                            cursor: 'pointer',
+                            color: '#856404',
+                            fontWeight: 600
+                        }}>Dismiss</button>
+                    </div>
+                )}
 
                 {candidates.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'red' }}>No candidates found for this constituency.</div>
@@ -229,6 +301,7 @@ const Vote = () => {
 
                 <div style={{ textAlign: 'center', marginTop: '3rem' }}>
                     <button
+                        id="main-vote-button"
                         className="btn btn-primary"
                         style={{ maxWidth: '300px', margin: '0 auto', backgroundColor: selectedCandidateId ? 'var(--primary-color)' : '#ccc' }}
                         disabled={!selectedCandidateId || isVoting}
