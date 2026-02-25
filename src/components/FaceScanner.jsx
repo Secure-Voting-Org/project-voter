@@ -49,9 +49,6 @@ const FaceScanner = ({ onScanSuccess, onScanFailure, currentUser, onEnroll, mode
 
         setStatus(mode === 'enroll' ? 'Scanning face for registration...' : 'Verifying identity...');
 
-        let mismatchCount = 0;
-        let noFaceCount = 0;
-
         const interval = setInterval(async () => {
             if (!videoRef.current) {
                 clearInterval(interval);
@@ -65,7 +62,6 @@ const FaceScanner = ({ onScanSuccess, onScanFailure, currentUser, onEnroll, mode
                     .withFaceDescriptor();
 
                 if (detections) {
-                    noFaceCount = 0;
                     const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
                     // Clear previous drawings
@@ -94,25 +90,11 @@ const FaceScanner = ({ onScanSuccess, onScanFailure, currentUser, onEnroll, mode
                                 video.srcObject.getTracks().forEach(track => track.stop());
                                 if (onScanSuccess) onScanSuccess();
                             } else {
-                                mismatchCount++;
-                                setStatus(`Face Does Not Match Records (${mismatchCount}/10)`);
-                                if (mismatchCount >= 10) {
-                                    clearInterval(interval);
-                                    video.srcObject.getTracks().forEach(track => track.stop());
-                                    if (onScanFailure) onScanFailure(new Error('FACE_MISMATCH'));
-                                }
+                                setStatus('Face Does Not Match Records');
                             }
                         } else {
                             setStatus('Error: No reference data for verification.');
                         }
-                    }
-                } else {
-                    noFaceCount++;
-                    if (noFaceCount > 10) setStatus(`No face detected (${noFaceCount}/30)`);
-                    if (noFaceCount >= 30) {
-                        clearInterval(interval);
-                        video.srcObject.getTracks().forEach(track => track.stop());
-                        if (onScanFailure) onScanFailure(new Error('NO_FACE_DETECTED'));
                     }
                 }
             } catch (error) {

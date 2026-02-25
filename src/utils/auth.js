@@ -53,23 +53,6 @@ export const Auth = {
         }
     },
 
-    // Log a login failure (e.g. biometric mismatch)
-    logFailure: async (userId, reason) => {
-        try {
-            await fetch(`${Auth.API_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: userId,
-                    status: 'FAILED',
-                    details: { method: 'FACE_AUTH', reason: reason }
-                })
-            });
-        } catch (e) {
-            console.error("Logging failure failed", e);
-        }
-    },
-
     // Clear session data
     logout: () => {
         localStorage.removeItem('user_token');

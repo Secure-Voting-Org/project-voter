@@ -138,9 +138,6 @@ const Vote = () => {
 
             console.log("Starting encryption for vector vote. Selected:", selectedCandidateId);
             const candidateIds = candidates.map(c => c.id);
-            const encryptedVote = await new Promise((resolve, reject) => {
-
-            console.log("Starting encryption with candidateId:", selectedCandidateId);
             const { encryptedVote, rangeProof } = await new Promise((resolve, reject) => {
 
                 worker.postMessage({

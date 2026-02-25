@@ -105,19 +105,8 @@ const Login = () => {
         }, 1500);
     };
 
-    const handleScanFailure = async (err) => {
+    const handleScanFailure = (err) => {
         setStatusMsg("Scan Error: " + err.message);
-        setError("Biometric verification failed. Please try again.");
-        if (currentUser && currentUser.id) {
-            await Auth.logFailure(currentUser.id, err.message || 'FACE_MISMATCH');
-        }
-
-        // Return to Voter ID input step after 3 seconds
-        setTimeout(() => {
-            setStep(1);
-            setVoterId('');
-            setStatusMsg('');
-        }, 3000);
     };
 
     return (

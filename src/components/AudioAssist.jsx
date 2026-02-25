@@ -110,8 +110,8 @@ const AudioAssist = () => {
             console.log("Voice Input:", transcript);
 
             // GLOBAL TOGGLE COMMANDS
-            const onMatchers = ["audio on", "turn on audio", "enable audio", "start audio", "turn audio on"];
-            const offMatchers = ["audio off", "stop audio", "disable audio", "turn off audio", "turn audio off"];
+            const onMatchers = ["audio on", "turn on audio", "enable audio", "start audio", "turn audio on", "turn on the audio"];
+            const offMatchers = ["audio off", "stop audio", "disable audio", "turn off audio", "turn audio off", "turn off the audio"];
 
             if (onMatchers.some(match => transcript.includes(match))) {
                 if (!isEnabledRef.current) toggleAssist(true);
@@ -227,6 +227,7 @@ const AudioAssist = () => {
         };
 
         recognition.onend = () => {
+            // Keep restarting recognition endlessly to listen for toggle events
             setTimeout(() => { if (recognitionRef.current) try { recognition.start(); } catch (e) { } }, 100);
         };
 

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
-import AudioAssist from './AudioAssist';
 
 const Navbar = () => {
     const { user, isLoggedIn, logout } = useAuth();
@@ -19,9 +18,8 @@ const Navbar = () => {
                 />
                 {t('navbar.title')}
             </Link>
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link to="/">{t('navbar.home')}</Link>
-                <Link to="/search">Track Receipt</Link>
                 {!isLoggedIn ? (
                     <>
                         <Link to="/login">{t('navbar.login')}</Link>
@@ -38,7 +36,6 @@ const Navbar = () => {
                         </button>
                     </>
                 )}
-                <AudioAssist />
                 <LanguageSwitcher />
             </nav>
         </header>
