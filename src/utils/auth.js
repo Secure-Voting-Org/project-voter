@@ -1,7 +1,9 @@
+import API_BASE from '../config/api';
+
 // Basic Authentication Utilities
 export const Auth = {
     // API Base URL
-    API_URL: '/api',
+    API_URL: API_BASE,
 
     // Verify Voter ID (Supports Plain ID or Encrypted Payload)
     verifyVoterId: async (identifier) => {
