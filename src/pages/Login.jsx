@@ -55,10 +55,12 @@ const Login = () => {
     };
 
     const simulateNFCLogin = () => {
-        const mockID = "ABC1234567"; // Use a known ID if possible, or random
-        setVoterId(mockID);
-        setShowNFCModal(false);
-        verifyVoterId(mockID);
+        const mockID = window.prompt("Enter the Voter ID / NFC String to simulate:", "dd:e9:1d:f3");
+        if (mockID) {
+            setVoterId(mockID.trim());
+            setShowNFCModal(false);
+            verifyVoterId(mockID.trim());
+        }
     };
 
     // Refactored verification logic to be reusable

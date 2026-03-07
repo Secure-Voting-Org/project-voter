@@ -55,7 +55,9 @@ const Vote = () => {
             }
 
             try {
-                const response = await fetch(`${Auth.API_URL}/election/public-key`);
+                const fetchUrl = `${Auth.API_URL}/api/election/public-key`;
+                const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/election/public-key` : fetchUrl;
+                const response = await fetch(urlToUse);
                 if (response.ok) {
                     const data = await response.json();
                     setPublicKey(data);
@@ -73,7 +75,9 @@ const Vote = () => {
         if (currentUser && currentUser.constituency) {
             const fetchCandidates = async () => {
                 try {
-                    const response = await fetch(`${Auth.API_URL}/candidates?constituency=${encodeURIComponent(currentUser.constituency)}`);
+                    const fetchUrl = `${Auth.API_URL}/api/candidates?constituency=${encodeURIComponent(currentUser.constituency)}`;
+                    const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/candidates?constituency=${encodeURIComponent(currentUser.constituency)}` : fetchUrl;
+                    const response = await fetch(urlToUse);
                     if (response.ok) {
                         const data = await response.json();
                         setCandidates(data);
@@ -109,7 +113,9 @@ const Vote = () => {
 
         // Module 5.1 — Check election phase FIRST before any network calls
         try {
-            const phaseRes = await fetch(`${Auth.API_URL}/election/status`);
+            const fetchUrl = `${Auth.API_URL}/api/election/status`;
+            const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/election/status` : fetchUrl;
+            const phaseRes = await fetch(urlToUse);
             if (phaseRes.ok) {
                 const phaseData = await phaseRes.json();
                 if (phaseData.phase === 'PRE_POLL') {
@@ -167,7 +173,8 @@ const Vote = () => {
             // --- BLIND SIGNATURE FLOW ---
 
             // 1a. Fetch Blind Signature Keys
-            const keyRes = await fetch(`${Auth.API_URL}/blind-signature/keys`);
+            const keysUrl = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/blind-signature/keys` : `${Auth.API_URL}/api/blind-signature/keys`;
+            const keyRes = await fetch(keysUrl);
             if (!keyRes.ok) throw new Error("Failed to fetch blind signature keys");
             const keys = await keyRes.json(); // { n, e }
 
@@ -179,7 +186,8 @@ const Vote = () => {
             console.log("Blinded Token Generated for Signing");
 
             // 1c. Rest Blind Signature from Authority
-            const signRes = await fetch(`${Auth.API_URL}/blind-sign`, {
+            const signUrl = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/blind-sign` : `${Auth.API_URL}/api/blind-sign`;
+            const signRes = await fetch(signUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -196,7 +204,8 @@ const Vote = () => {
             console.log("Signature Unblinded Successfully");
 
             // 2. Submit Encrypted Vote (Anonymous)
-            const response = await fetch(`${Auth.API_URL}/vote`, {
+            const voteUrl = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/vote` : `${Auth.API_URL}/api/vote`;
+            const response = await fetch(voteUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

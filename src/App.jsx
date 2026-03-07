@@ -14,17 +14,17 @@ import { Auth } from './utils/auth';
 function App() {
   useEffect(() => {
     const fetchKey = async () => {
-      if (!sessionStorage.getItem('election_public_key')) {
-        try {
-          const response = await fetch(`${Auth.API_URL}/election/public-key`);
-          if (response.ok) {
-            const key = await response.json();
-            sessionStorage.setItem('election_public_key', JSON.stringify(key));
-            console.log("Election Key Cached");
-          }
-        } catch (e) {
-          console.error("Failed to cache election key", e);
+      try {
+        const fetchUrl = `${Auth.API_URL}/api/election/public-key`;
+        const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/election/public-key` : fetchUrl;
+        const response = await fetch(urlToUse);
+        if (response.ok) {
+          const key = await response.json();
+          sessionStorage.setItem('election_public_key', JSON.stringify(key));
+          console.log("Election Key Cached");
         }
+      } catch (e) {
+        console.error("Failed to cache election key", e);
       }
     };
     fetchKey();

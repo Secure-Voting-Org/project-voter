@@ -21,29 +21,19 @@ self.onmessage = async (e) => {
     const { candidateIds, selectedCandidateId, publicKeyData } = e.data;
 
     try {
-        console.log("Worker: Starting encryption...");
-
-        // Reconstruct Public Key
         const publicKey = new paillier.PublicKey(
             BigInt(publicKeyData.n),
             BigInt(publicKeyData.g)
         );
 
-        // Encrypt the candidate ID (must be a number or convertible to BigInt)
-        // For true homomorphic tally, we create an encrypted vector for all candidates
         const encryptedVector = {};
         for (const cid of candidateIds) {
             const value = cid === selectedCandidateId ? 1n : 0n;
             encryptedVector[cid] = publicKey.encrypt(value).toString();
         }
 
-        console.log("Worker: Encryption complete.");
-
-        // Module 4.7: Generate ZK Range Proof for vote value = 1 (valid binary vote)
         const rangeProof = await generateRangeProof(1);
-        console.log("Worker: ZK Range Proof generated:", rangeProof.valid);
 
-        // Send back the hex string (or decimal string) of the BigInt
         self.postMessage({
             success: true,
             encryptedVote: JSON.stringify(encryptedVector),
@@ -54,7 +44,7 @@ self.onmessage = async (e) => {
         console.error("Worker Error:", error);
         self.postMessage({
             success: false,
-            error: error.message
+            error: error.message || "Unknown worker error"
         });
     }
 };

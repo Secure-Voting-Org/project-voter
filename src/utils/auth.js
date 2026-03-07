@@ -12,19 +12,19 @@ export const Auth = {
             if (typeof identifier === 'string') {
                 body = { voterId: identifier };
             } else if (typeof identifier === 'object') {
-                // Expects { voterId, encryptedData, ... }
                 body = identifier;
             }
 
-            const response = await fetch(`${Auth.API_URL}/verify-voter`, {
+            const fetchUrl = `${Auth.API_URL}/api/verify-voter`;
+            const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/verify-voter` : fetchUrl;
+
+            const response = await fetch(urlToUse, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
-            if (!response.ok) {
-                return null;
-            }
+            if (!response.ok) return null;
 
             const data = await response.json();
             return data;
@@ -41,7 +41,9 @@ export const Auth = {
 
         // Log to backend
         try {
-            await fetch(`${Auth.API_URL}/login`, {
+            const fetchUrl = `${Auth.API_URL}/api/login`;
+            const urlToUse = Auth.API_URL.endsWith('/api') ? `${Auth.API_URL}/login` : fetchUrl;
+            await fetch(urlToUse, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
