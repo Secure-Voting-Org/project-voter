@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -7,6 +7,12 @@ import AudioAssist from './AudioAssist';
 const Navbar = () => {
     const { user, isLoggedIn, logout } = useAuth();
     const { t } = useTranslation();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     return (
         <header className="navbar">
@@ -29,8 +35,8 @@ const Navbar = () => {
                         {user?.role === 'admin' && <Link to="/admin">{t('navbar.admin')}</Link>}
                         {user?.role === 'voter' && <Link to="/vote">{t('navbar.booth')}</Link>}
                         <button
-                            onClick={logout}
-                            style={{ marginLeft: '10px', cursor: 'pointer' }}
+                            onClick={handleLogout}
+                            style={{ marginLeft: '10px', cursor: 'pointer', background: 'none', border: 'none', color: '#1a73e8', fontWeight: 600, fontSize: '0.9rem' }}
                         >
                             {t('navbar.logout')} ({user?.name})
                         </button>
