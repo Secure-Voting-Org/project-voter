@@ -4,12 +4,14 @@ import FaceScanner from '../components/FaceScanner';
 import { Auth } from '../utils/auth';
 import { enrollFace } from '../services/faceAuth';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 import { useNFC } from '../hooks/useNFC';
 import { Wifi, XCircle } from 'lucide-react';
 
 const Login = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { login: contextLogin } = useAuth();
     const [step, setStep] = useState(1); // 1: ID, 3: Verify (Step 2 Enrollment removed)
     const [voterId, setVoterId] = useState('');
     const [error, setError] = useState('');
@@ -101,7 +103,7 @@ const Login = () => {
     // Step 3: Handle Verification
     const handleVerificationSuccess = async () => {
         setStatusMsg(`${t('login.success')} Logging in...`);
-        await Auth.login(currentUser);
+        await contextLogin(currentUser);
         setTimeout(() => {
             navigate('/vote');
         }, 1500);

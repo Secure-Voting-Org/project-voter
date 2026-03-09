@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Auth } from '../utils/auth';
 
 export const AuthContext = createContext(null);
 
@@ -7,29 +8,31 @@ export const AuthProvider = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [loading, setLoading] = useState(true); // Initial state is loading
 
-    const login = (userData) => {
+    const login = async (userData) => {
+        await Auth.login(userData);
         setUser(userData);
         setIsLoggedIn(true);
-        localStorage.setItem('user', JSON.stringify(userData));
     };
 
     const logout = () => {
+        Auth.logout();
         setUser(null);
         setIsLoggedIn(false);
-        localStorage.removeItem('user');
     };
 
     useEffect(() => {
         try {
-            const storedUser = localStorage.getItem('user');
-            if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
+            if (Auth.isAuthenticated()) {
+                const parsedUser = Auth.getUser();
                 setUser(parsedUser);
                 setIsLoggedIn(true);
+            } else {
+                setUser(null);
+                setIsLoggedIn(false);
             }
         } catch (error) {
             console.error("Auth initialization error:", error);
-            localStorage.removeItem('user');
+            Auth.logout();
         } finally {
             setLoading(false); // MUST set to false so children can render
         }
