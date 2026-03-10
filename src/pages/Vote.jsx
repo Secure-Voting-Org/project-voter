@@ -209,11 +209,12 @@ const Vote = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    vote: encryptedVote, // Ciphertext
-                    auth_token: token,   // original Token (Message)
+                    vote: encryptedVote,       // Ciphertext
+                    auth_token: token,          // original Token (Message)
                     signature: unblindedSignature, // Valid Signature
                     constituency: user.constituency,
-                    range_proof: rangeProof  // Module 4.7: ZK Range Proof for binary vote validation
+                    range_proof: rangeProof,    // Module 4.7: ZK Range Proof
+                    voterId: user.id,            // ← pass so backend marks token after commit
                 })
             });
 
