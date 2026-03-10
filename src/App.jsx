@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Admin from './pages/Admin';
 import Vote from './pages/Vote';
 import VoteSuccess from './pages/VoteSuccess';
+import HelpPage from './pages/HelpPage';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -41,6 +42,7 @@ function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/vote" element={<Vote />} />
           <Route path="/vote-success" element={<VoteSuccess />} />
+          <Route path="/help" element={<HelpPage />} />
         </Routes>
       </Router>
     </AuthProvider>
